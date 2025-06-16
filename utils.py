@@ -2,12 +2,19 @@ import json
 import boto3
 from typing import Dict, Any
 from botocore.exceptions import ClientError
+from decimal import Decimal
 from config import logger, AWS_REGION
 
 # Initialize AWS clients
 lambda_client = boto3.client("lambda", region_name=AWS_REGION)
 dynamodb = boto3.resource('dynamodb')
 sessions_table = dynamodb.Table('Sessions')
+
+class DecimalEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Decimal):
+            return float(obj)
+        return super(DecimalEncoder, self).default(obj)
 
 class AuthorizationError(Exception):
     """Custom exception for authorization failures"""
@@ -23,7 +30,7 @@ def create_response(status_code, body):
     return {
         "statusCode": status_code,
         "headers": {"Content-Type": "application/json", "Access-Control-Allow-Origin": "*"},
-        "body": json.dumps(body),
+        "body": json.dumps(body, cls=DecimalEncoder),
     }
 
 def invoke_lambda(function_name, payload, invocation_type="RequestResponse"):
