@@ -37,10 +37,28 @@ def check_and_update_rate_limit(client_id):
     user_rate_limit = get_user_rate_limit(client_id)
     
     try:
-        # Get current invocations
+        current_time = int(time.time())
+        
+        # Get current record
         response = table.get_item(Key={'associated_account': client_id})
         item = response.get('Item', {})
         current_invocations = item.get('invocations', 0)
+        created_at = item.get('created_at', current_time)
+
+        # Check if TTL has expired
+        time_diff = current_time - created_at
+        if time_diff >= TTL_S:
+            # Reset invocations if TTL has expired
+            logger.info(f"TTL expired for {client_id}, resetting invocations")
+            table.update_item(
+                Key={'associated_account': client_id},
+                UpdateExpression="SET invocations = :start, created_at = :now",
+                ExpressionAttributeValues={
+                    ':start': 1,
+                    ':now': current_time
+                }
+            )
+            return {"message": "Rate limit check passed (TTL reset).", "current": 1, "limit": user_rate_limit}
 
         logger.info(f"Current invocations: {current_invocations}")
         logger.info(f"User rate limit: {user_rate_limit}")
@@ -48,15 +66,14 @@ def check_and_update_rate_limit(client_id):
         if current_invocations >= user_rate_limit:
             raise LambdaError(429, "Rate limit exceeded.")
 
-        # Update or create record
-        current_time = int(time.time())
+        # Update invocations if within TTL
         table.update_item(
             Key={'associated_account': client_id},
-            UpdateExpression="SET invocations = if_not_exists(invocations, :start) + :inc, expired_at = if_not_exists(expired_at, :expired)",
+            UpdateExpression="SET invocations = if_not_exists(invocations, :start) + :inc, created_at = if_not_exists(created_at, :now)",
             ExpressionAttributeValues={
                 ':inc': 1,
                 ':start': 0,
-                ':expired': current_time + 60  # 60 seconds from now
+                ':now': current_time
             }
         )
         return {"message": "Rate limit check passed.", "current": current_invocations + 1, "limit": user_rate_limit}
