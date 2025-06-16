@@ -42,6 +42,9 @@ def check_and_update_rate_limit(client_id):
         item = response.get('Item', {})
         current_invocations = item.get('invocations', 0)
 
+        logger.info(f"Current invocations: {current_invocations}")
+        logger.info(f"User rate limit: {user_rate_limit}")
+
         if current_invocations >= user_rate_limit:
             raise LambdaError(429, "Rate limit exceeded.")
 
