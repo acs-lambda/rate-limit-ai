@@ -16,7 +16,7 @@ logger.setLevel(logging.INFO)
 
 # Environment Variables
 DYNAMODB_TABLE = os.environ.get('RATE_LIMIT_TABLE')
-TTL_S = int(os.environ.get('TTL_S'))  # Default 1 hour TTL if not specified
+TTL_S = int(os.environ.get('TTL_S', '60'))  # Default 1 minute TTL if not specified
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
