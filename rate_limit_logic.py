@@ -46,14 +46,14 @@ def check_and_update_rate_limit(client_id):
             raise LambdaError(429, "Rate limit exceeded.")
 
         # Update or create record
-        ttl_timestamp = int(time.time()) + TTL_S
+        current_time = int(time.time())
         table.update_item(
             Key={'associated_account': client_id},
-            UpdateExpression="SET invocations = if_not_exists(invocations, :start) + :inc, ttl = :ttl",
+            UpdateExpression="SET invocations = if_not_exists(invocations, :start) + :inc, expired_at = if_not_exists(expired_at, :expired)",
             ExpressionAttributeValues={
                 ':inc': 1,
                 ':start': 0,
-                ':ttl': ttl_timestamp
+                ':expired': current_time + 60  # 60 seconds from now
             }
         )
         return {"message": "Rate limit check passed.", "current": current_invocations + 1, "limit": user_rate_limit}
@@ -63,8 +63,7 @@ def check_and_update_rate_limit(client_id):
         raise LambdaError(500, "Database error during rate limit check.")
 
 def process_rate_limit_request(client_id, session_id, auth_bp):
-    if session_id == auth_bp:
-        return {"message": "Rate limit check bypassed for admin."}
+    if session_id != auth_bp:
+        authorize(client_id, session_id)
     
-    authorize(client_id, session_id) # authorize is in utils
     return check_and_update_rate_limit(client_id)
