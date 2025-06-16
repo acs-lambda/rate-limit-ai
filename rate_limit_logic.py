@@ -16,9 +16,19 @@ def get_user_rate_limit(client_id):
     try:
         response = user_table.get_item(Key={'id': client_id})
         item = response.get('Item')
-        if not item or 'rl_ai' not in item:
-            raise LambdaError(500, f"User {client_id} has no AI rate limit set.")
-        return item['rl_ai']
+        
+        if not item:
+            raise LambdaError(404, f"User {client_id} not found.")
+            
+        rate_limit = item.get('rl_ai')
+        if rate_limit is None:
+            raise LambdaError(500, f"User {client_id} has no AI rate limit configured.")
+            
+        try:
+            return int(rate_limit)
+        except (TypeError, ValueError):
+            raise LambdaError(500, f"Invalid rate limit value for user {client_id}. Expected a number.")
+            
     except ClientError as e:
         logger.error(f"Error retrieving user rate limit for {client_id}: {e}")
         raise LambdaError(500, "Database error while fetching user rate limit.")
