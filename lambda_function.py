@@ -15,6 +15,7 @@ logger.setLevel(logging.INFO)
 # Environment Variables
 DYNAMODB_TABLE = os.environ.get('RATE_LIMIT_TABLE')
 TTL_S = int(os.environ.get('TTL_S'))  # Default 1 hour TTL if not specified
+AUTH_BP = os.environ.get('AUTH_BP', '')
 
 # Initialize DynamoDB client
 dynamodb = boto3.resource('dynamodb')
@@ -133,6 +134,14 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
         
         client_id = parsed_event['client_id']
         session_id = parsed_event['session']
+        
+        if session_id == AUTH_BP:
+            return {
+                'statusCode': 200,
+                'body': json.dumps({
+                    'message': 'Rate limit check passed',
+                })
+            }
         
         # Authorize the request
         try:
