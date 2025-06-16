@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
 import logging
-from utils import invoke, parse_event, authorize, AuthorizationError, create_response, LambdaError
+from utils import invoke_lambda, parse_event, authorize, AuthorizationError, create_response, LambdaError
 from config import logger, AUTH_BP
 from rate_limit_logic import process_rate_limit_request
 
